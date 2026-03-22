@@ -7,15 +7,19 @@ import com.example.search.engine.filter.Filter;
 import com.example.search.engine.sort.SortStrategy;
 import com.example.search.model.Record;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class SearchServiceImpl implements SearchService {
 
     private List<Record> database = new ArrayList<>();
     private Map<String, Filter> filters;
     private Map<String, SortStrategy> sorters;
+    private ExecutorService executor = Executors.newFixedThreadPool(4);
 
     public SearchServiceImpl(Map<String, Filter> filters,
                              Map<String, SortStrategy> sorters) {
@@ -30,26 +34,56 @@ public class SearchServiceImpl implements SearchService {
     public List<Record> search(List<FilterRequest> searchFilters, SortRequest sortRequest,
                                PageRequest pageRequest) {
 
-        List<Record> result = new ArrayList<>();
+        List<Future<List<Record>>> futures = new ArrayList<>();
 
-        for (Record record : database) {
+        int chunkSize = Math.max(1, database.size() / 4);
 
-            boolean matches = true;
+        for (int i = 0; i < database.size(); i += chunkSize) {
 
-            if (searchFilters != null) {
-                for (FilterRequest request : searchFilters) {
-                    Filter filter = filters.get(request.getField());
+            int start = i;
+            int end = Math.min(i + chunkSize, database.size());
 
-                    if (filter == null ||
-                            !filter.apply(record, request.getOperator(), request.getValue())) {
-                        matches = false;
-                        break;
+            List<Record> subList = database.subList(start, end);
+
+            Callable<List<Record>> task = () -> {
+
+                List<Record> partialResult = new ArrayList<>();
+
+                for (Record record : subList) {
+
+                    boolean matches = true;
+
+                    if (searchFilters != null) {
+                        for (FilterRequest request : searchFilters) {
+
+                            Filter filter = filters.get(request.getField());
+
+                            if (filter == null ||
+                                    !filter.apply(record, request.getOperator(), request.getValue())) {
+
+                                matches = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matches) {
+                        partialResult.add(record);
                     }
                 }
-            }
 
-            if (matches) {
-                result.add(record);
+                return partialResult;
+            };
+
+            futures.add(executor.submit(task));
+        }
+        List<Record> result = new ArrayList<>();
+
+        for (Future<List<Record>> future : futures) {
+            try {
+                result.addAll(future.get());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }
         if (sortRequest != null) {
@@ -70,6 +104,10 @@ public class SearchServiceImpl implements SearchService {
 
             result = new ArrayList<>(result.subList(start, end));
         }
+        shutdown();
         return result;
+    }
+    public void shutdown() {
+        executor.shutdown();
     }
 }
