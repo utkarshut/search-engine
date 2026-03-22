@@ -27,6 +27,10 @@ public class Runner {
         SearchService service = new SearchServiceImpl(filters, sorters);
 
         MainApp app = new MainApp(service);
-        app.run();
+        try {
+            app.run();
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 }
