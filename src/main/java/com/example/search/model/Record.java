@@ -26,4 +26,8 @@ public class Record {
     public int getAge() {
         return age;
     }
+    @Override
+    public String toString() {
+        return "Record{id=" + id + ", name='" + name + "', age=" + age + "}";
+    }
 }
