@@ -3,11 +3,7 @@ package com.example.search.service;
 import com.example.search.dto.FilterRequest;
 import com.example.search.dto.PageRequest;
 import com.example.search.dto.SortRequest;
-import com.example.search.engine.filter.AgeFilter;
 import com.example.search.engine.filter.Filter;
-import com.example.search.engine.filter.NameFilter;
-import com.example.search.engine.sort.AgeSort;
-import com.example.search.engine.sort.NameSort;
 import com.example.search.engine.sort.SortStrategy;
 import com.example.search.model.Record;
 import java.util.ArrayList;
@@ -18,18 +14,16 @@ import java.util.Map;
 public class SearchServiceImpl implements SearchService {
 
     private List<Record> database = new ArrayList<>();
-    private Map<String, Filter> filters = new HashMap<>();
-    private Map<String, SortStrategy> sorters = new HashMap<>();
+    private Map<String, Filter> filters;
+    private Map<String, SortStrategy> sorters;
 
-    public SearchServiceImpl() {
+    public SearchServiceImpl(Map<String, Filter> filters,
+                             Map<String, SortStrategy> sorters) {
+        this.filters = filters;
+        this.sorters = sorters;
         database.add(new Record(1, "John", 25));
         database.add(new Record(2, "Alice", 30));
         database.add(new Record(3, "Bob", 25));
-
-        filters.put("name", new NameFilter());
-        filters.put("age", new AgeFilter());
-        sorters.put("age", new AgeSort());
-        sorters.put("name", new NameSort());
     }
 
     @Override
@@ -42,15 +36,15 @@ public class SearchServiceImpl implements SearchService {
 
             boolean matches = true;
 
-            for (FilterRequest request : searchFilters) {
+            if (searchFilters != null) {
+                for (FilterRequest request : searchFilters) {
+                    Filter filter = filters.get(request.getField());
 
-                Filter filter = filters.get(request.getField());
-
-                if (filter == null ||
-                        !filter.apply(record, request.getOperator(), request.getValue())) {
-
-                    matches = false;
-                    break;
+                    if (filter == null ||
+                            !filter.apply(record, request.getOperator(), request.getValue())) {
+                        matches = false;
+                        break;
+                    }
                 }
             }
 
@@ -74,7 +68,7 @@ public class SearchServiceImpl implements SearchService {
                 return new ArrayList<>();
             }
 
-            result = result.subList(start, end);
+            result = new ArrayList<>(result.subList(start, end));
         }
         return result;
     }

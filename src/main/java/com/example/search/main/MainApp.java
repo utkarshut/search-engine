@@ -20,7 +20,7 @@ public class MainApp {
 
     public void run() {
         List<FilterRequest> filters = new ArrayList<>();
-        filters.add(new FilterRequest("age", ">", "20"));
+        filters.add(new FilterRequest("age", ">", "25"));
 
         SortRequest sort = new SortRequest("age", "desc");
 
