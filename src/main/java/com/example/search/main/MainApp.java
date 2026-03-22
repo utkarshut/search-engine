@@ -1,6 +1,8 @@
 package com.example.search.main;
 
 import com.example.search.dto.FilterRequest;
+import com.example.search.dto.PageRequest;
+import com.example.search.dto.SortRequest;
 import com.example.search.service.SearchService;
 
 import java.util.ArrayList;
@@ -18,10 +20,12 @@ public class MainApp {
 
     public void run() {
         List<FilterRequest> filters = new ArrayList<>();
-
         filters.add(new FilterRequest("age", ">", "20"));
-        filters.add(new FilterRequest("name", "=", "John"));
 
-        System.out.println(service.search(filters));
+        SortRequest sort = new SortRequest("age", "desc");
+
+        PageRequest page = new PageRequest(0, 2);
+
+        System.out.println(service.search(filters, sort, page));
     }
 }
